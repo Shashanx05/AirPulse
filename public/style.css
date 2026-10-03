@@ -902,4 +902,106 @@ body {
   color: #fff;
 }
 
+/* Mobile Optimization & Responsiveness */
+@media (max-width: 768px) {
+  .app-container {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .navbar {
+    padding: 0.75rem 0.85rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .brand-text h1 {
+    font-size: 1.2rem;
+  }
+
+  .brand-text .tagline {
+    font-size: 0.68rem;
+  }
+
+  .nav-controls {
+    gap: 0.5rem;
+  }
+
+  .status-badge {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+  }
+
+  .card {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+  }
+
+  .card-header {
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .type-pills {
+    flex-wrap: wrap;
+  }
+
+  .drop-zone {
+    padding: 1.5rem 0.85rem;
+  }
+
+  .qr-box {
+    width: 180px;
+    height: 180px;
+  }
+
+  .pin-code {
+    font-size: 1.5rem;
+    letter-spacing: 0.15em;
+  }
+
+  .pin-input-group input {
+    font-size: 1.2rem;
+    padding: 0.65rem;
+  }
+
+  .toast-container {
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+  }
+
+  .toast {
+    font-size: 0.82rem;
+    padding: 0.7rem 1rem;
+  }
+
+  .files-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .snippet-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .snippet-card .copy-snippet {
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar {
+    justify-content: space-between;
+  }
+  .brand-text .tagline {
+    display: none;
+  }
+  .pin-display-box {
+    padding: 0.65rem;
+  }
+}
+
 .hidden { display: none !important; }
