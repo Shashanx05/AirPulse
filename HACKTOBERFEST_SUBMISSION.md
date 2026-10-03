@@ -28,7 +28,11 @@ My friend (and honestly, almost everyone I know) constantly runs into the annoyi
 - 📋 **Clipboard & Text Sharing**: Send quick links, Wi-Fi passwords, or text notes between phone and PC with one click.
 - 🔊 **Web Audio Sound Effects**: Subtle audio chimes confirm when a device connects or when a file transfer finishes.
 
-### Live Local Setup
+- 🔊 **Web Audio Sound Effects**: Subtle audio chimes confirm when a device connects or when a file transfer finishes.
+
+### Live Demo & Setup
+- **Live Hosted Backend**: [https://airpulse-backend-pcl3.onrender.com/](https://airpulse-backend-pcl3.onrender.com/)
+
 ```bash
 # Clone the repository & install dependencies
 npm install
@@ -36,7 +40,7 @@ npm install
 # Start the local AirPulse server
 npm start
 ```
-Open `http://localhost:3000` on your desktop, then scan the displayed QR Code with your mobile phone!
+Open `http://localhost:3000` locally or access [https://airpulse-backend-pcl3.onrender.com/](https://airpulse-backend-pcl3.onrender.com/) on your desktop, then scan the displayed QR Code with your mobile phone!
 
 ---
 
@@ -51,7 +55,7 @@ Direct Link: [https://github.com/Shashanx05/AirPulse/tree/main](https://github.c
 The application is structured into a lightweight, high-performance Node.js backend with an ultra-responsive frontend:
 
 ```
-├── server.js            # Express server, Socket.io signaling, local IP auto-detection & QR generation
+├── server.js            # Express server, Socket.io signaling, local IP & cloud host URL auto-detection
 ├── package.json         # Dependencies (Express, Socket.io, QRCode, IP)
 └── public/
     ├── index.html       # Single Page App layout with pairing hub, dropzone, & received vault
@@ -59,24 +63,27 @@ The application is structured into a lightweight, high-performance Node.js backe
     └── app.js           # Socket.io client, WebRTC DataChannel engine, file chunker, & audio synthesizer
 ```
 
-### Highlights from `server.js` (Local IP & QR Code Engine):
+### Highlights from `server.js` (Cloud & Local Network URL Engine):
 ```javascript
-// Auto-detect local Wi-Fi IP address for seamless mobile camera scanning
-function getLocalIP() {
-  const interfaces = os.networkInterfaces();
-  for (const devName in interfaces) {
-    const iface = interfaces[devName];
-    for (let i = 0; i < iface.length; i++) {
-      const alias = iface[i];
-      if (alias.family === 'IPv4' && !alias.internal) return alias.address;
+// Automatically detect cloud environment (Render.com) or local Wi-Fi IP address for mobile pairing
+function getBaseUrl(socket) {
+  if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL;
+  if (socket?.handshake?.headers) {
+    const host = socket.handshake.headers.host;
+    const proto = socket.handshake.headers['x-forwarded-proto'] || 'http';
+    if (host && !host.includes('localhost') && !host.startsWith('10.')) {
+      return `${proto}://${host}`;
     }
   }
-  return '127.0.0.1';
+  return `http://${localIp}:${PORT}`;
 }
 
-// Generate dynamic QR Code pointing directly to mobile pairing URL
+// Generate dynamic QR Code pointing to public mobile pairing URL
 app.get('/api/qrcode', async (req, res) => {
-  const text = req.query.text || `http://${localIp}:${PORT}`;
+  const hostHeader = req.headers.host;
+  const proto = req.headers['x-forwarded-proto'] || 'http';
+  const defaultBase = process.env.RENDER_EXTERNAL_URL || `${proto}://${hostHeader}`;
+  const text = req.query.text || defaultBase;
   const qrDataUrl = await QRCode.toDataURL(text, { margin: 2, scale: 8 });
   res.json({ dataUrl: qrDataUrl });
 });

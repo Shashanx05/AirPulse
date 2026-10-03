@@ -35,19 +35,43 @@ const localIp = getLocalIP();
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
+// Helper to find Public or Local Base URL
+function getBaseUrl(socket) {
+  if (process.env.RENDER_EXTERNAL_URL) {
+    return process.env.RENDER_EXTERNAL_URL;
+  }
+  if (process.env.PUBLIC_URL) {
+    return process.env.PUBLIC_URL;
+  }
+  if (socket && socket.handshake && socket.handshake.headers) {
+    const host = socket.handshake.headers.host;
+    const proto = socket.handshake.headers['x-forwarded-proto'] || 'http';
+    if (host && !host.includes('localhost') && !host.includes('127.0.0.1') && !host.startsWith('10.') && !host.startsWith('192.168.')) {
+      return `${proto}://${host}`;
+    }
+  }
+  return `http://${localIp}:${PORT}`;
+}
+
 // API Info endpoint
 app.get('/api/info', (req, res) => {
+  const hostHeader = req.headers.host;
+  const proto = req.headers['x-forwarded-proto'] || 'http';
+  const baseUrl = process.env.RENDER_EXTERNAL_URL || process.env.PUBLIC_URL || `${proto}://${hostHeader}`;
   res.json({
     localIp: localIp,
     port: PORT,
-    baseUrl: `http://${localIp}:${PORT}`
+    baseUrl: baseUrl
   });
 });
 
 // Dynamic QR Code generation endpoint
 app.get('/api/qrcode', async (req, res) => {
   try {
-    const text = req.query.text || `http://${localIp}:${PORT}`;
+    const hostHeader = req.headers.host;
+    const proto = req.headers['x-forwarded-proto'] || 'http';
+    const defaultBase = process.env.RENDER_EXTERNAL_URL || process.env.PUBLIC_URL || `${proto}://${hostHeader}`;
+    const text = req.query.text || defaultBase;
     const qrDataUrl = await QRCode.toDataURL(text, {
       margin: 2,
       scale: 8,
@@ -91,7 +115,8 @@ io.on('connection', (socket) => {
       devices: new Map([[socket.id, deviceInfo]])
     });
 
-    const shareUrl = `http://${localIp}:${PORT}?code=${code}`;
+    const baseUrl = getBaseUrl(socket);
+    const shareUrl = `${baseUrl}?code=${code}`;
     
     socket.emit('room-created', {
       code: code,
@@ -100,7 +125,7 @@ io.on('connection', (socket) => {
       shareUrl: shareUrl,
       devices: [deviceInfo]
     });
-    console.log(`[Room Created] PIN: ${code} by ${deviceInfo.name}`);
+    console.log(`[Room Created] PIN: ${code} by ${deviceInfo.name} | URL: ${shareUrl}`);
   });
 
   // Join existing room (mobile or second device)
