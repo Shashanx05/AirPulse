@@ -1,0 +1,19 @@
+{
+  "name": "airpulse-file-sharing",
+  "version": "1.0.0",
+  "description": "Direct cross-device Mobile to Desktop file sharing app with QR Code and PIN pairing.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "ip": "^2.0.1",
+    "qrcode": "^1.5.3",
+    "socket.io": "^4.7.5"
+  },
+  "keywords": ["file-transfer", "airdrop", "snapdrop", "webrtc", "qrcode", "express", "socket.io"],
+  "author": "Antigravity",
+  "license": "MIT"
+}

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AirPulse - Direct Cross-Device File Sharing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div class="app-background">
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+    <div class="glow-orb orb-3"></div>
+  </div>
+
+  <div class="app-container">
+    <!-- Top Navbar -->
+    <header class="navbar">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4.5 16.5c-1.5 1.26-2 3-2 3s1.74-.5 3-2L14 8.76a2.12 2.12 0 0 0 0-3L12.24 4c-.83-.83-2.17-.83-3 0L4.5 8.76"></path>
+            <path d="m14.5 9.5 3-3a2.12 2.12 0 0 1 3 0l1.76 1.76c.83.83.83 2.17 0 3l-3 3"></path>
+            <path d="m8.5 15.5 7-7"></path>
+          </svg>
+          <span class="pulse-ring"></span>
+        </div>
+        <div class="brand-text">
+          <h1>AirPulse</h1>
+          <span class="tagline">Direct Phone ⇄ PC Transfer</span>
+        </div>
+      </div>
+
+      <div class="nav-controls">
+        <div class="status-badge" id="connectionStatus">
+          <span class="status-dot offline"></span>
+          <span class="status-text">Disconnected</span>
+        </div>
+
+        <button class="icon-btn" id="soundToggleBtn" title="Toggle Transfer Sound">
+          <svg id="soundIconOn" class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Grid Content -->
+    <main class="main-layout">
+      <!-- Left Column: Device Pairing Panel -->
+      <section class="card pairing-card" id="pairingSection">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+              <line x1="12" y1="18" x2="12.01" y2="18"></line>
+            </svg>
+            Device Connection
+          </h2>
+          <span class="pill-badge" id="modeBadge">Desktop Host</span>
+        </div>
+
+        <!-- Mode Toggle Tabs (Host vs Join) -->
+        <div class="tab-switcher">
+          <button class="tab-btn active" id="tabHostBtn">Scan QR / PIN Code</button>
+          <button class="tab-btn" id="tabJoinBtn">Enter PIN to Join</button>
+        </div>
+
+        <!-- Host View: QR Code & PIN -->
+        <div class="tab-content" id="hostTabContent">
+          <div class="qr-wrapper">
+            <div class="qr-box" id="qrContainer">
+              <div class="qr-spinner" id="qrSpinner"></div>
+              <img id="qrImage" src="" alt="Scan QR Code" style="display: none;">
+            </div>
+            <p class="qr-instruction">Scan with your mobile camera to pair instantly</p>
+          </div>
+
+          <div class="pin-display-box">
+            <span class="pin-label">OR USE 6-DIGIT PAIRING CODE</span>
+            <div class="pin-code" id="pinDisplay">------</div>
+          </div>
+
+          <div class="url-share-box">
+            <div class="url-input-wrap">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+              </svg>
+              <input type="text" id="shareUrlInput" readonly value="Detecting local IP..." />
+              <button class="copy-btn" id="copyUrlBtn" title="Copy Link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Join View: Enter Code Manually -->
+        <div class="tab-content hidden" id="joinTabContent">
+          <div class="join-box">
+            <p class="join-desc">Enter the 6-digit PIN code displayed on your other device screen:</p>
+            <div class="pin-input-group">
+              <input type="text" id="pinInput" placeholder="123456" maxlength="6" inputmode="numeric" autocomplete="off" />
+              <button class="btn btn-primary" id="joinRoomBtn">Connect Device</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Connected Devices List -->
+        <div class="connected-devices-panel">
+          <h3>Paired Devices (<span id="deviceCount">0</span>)</h3>
+          <div class="device-chips-list" id="devicesList">
+            <div class="empty-state-text">Waiting for a second device to connect...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: File Sharing Hub -->
+      <section class="card share-card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Send Files & Text
+          </h2>
+          <div class="type-pills">
+            <span>Photos</span>
+            <span>Videos</span>
+            <span>Docs</span>
+            <span>Audio</span>
+          </div>
+        </div>
+
+        <!-- Drag & Drop Zone -->
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="fileInput" multiple style="display: none;" />
+          <div class="drop-zone-content">
+            <div class="upload-icon-circle">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <h3>Drag & Drop files here</h3>
+            <p>or <button type="button" class="btn-link" id="browseFilesBtn">Browse files from device</button></p>
+            <span class="size-limit">No file size limit • Direct fast transfer</span>
+          </div>
+        </div>
+
+        <!-- Transfer Progress Indicator -->
+        <div class="transfer-progress-card hidden" id="transferProgressCard">
+          <div class="progress-info">
+            <div class="file-meta">
+              <svg class="file-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                <polyline points="13 2 13 9 20 9"></polyline>
+              </svg>
+              <div class="name-wrap">
+                <span class="file-name" id="progressFileName">filename.zip</span>
+                <span class="file-subtext" id="progressSubtext">0 MB of 0 MB • 0 MB/s</span>
+              </div>
+            </div>
+            <span class="percent-badge" id="progressPercent">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        </div>
+
+        <!-- Received Files Vault -->
+        <div class="vault-section">
+          <div class="vault-header">
+            <h3>Received Files (<span id="receivedCount">0</span>)</h3>
+            <button class="btn btn-sm btn-outline" id="downloadAllBtn" style="display: none;">Download All</button>
+          </div>
+          <div class="files-grid" id="receivedFilesGrid">
+            <div class="vault-empty">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <p>No files received yet. Send something from your connected phone or PC!</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Text & Clipboard Sender -->
+        <div class="text-share-section">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            Send Text / Links
+          </h3>
+          <div class="text-input-wrap">
+            <textarea id="textShareInput" placeholder="Paste URL, Wifi Password, or quick notes here..."></textarea>
+            <button class="btn btn-primary" id="sendTextBtn">Send Text</button>
+          </div>
+          <div class="text-snippets-list" id="textSnippetsList"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
