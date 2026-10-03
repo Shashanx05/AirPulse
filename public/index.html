@@ -41,6 +41,15 @@
           <span class="status-text">Disconnected</span>
         </div>
 
+        <button class="icon-btn" id="serverSettingsBtn" title="Server Connection Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+          </svg>
+        </button>
+
         <button class="icon-btn" id="soundToggleBtn" title="Toggle Transfer Sound">
           <svg id="soundIconOn" class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
@@ -215,6 +224,37 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <!-- Server Configuration Modal -->
+  <div class="modal-overlay hidden" id="serverModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+          </svg>
+          Backend Server Settings
+        </h3>
+        <button class="icon-btn btn-sm" id="closeServerModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+          When hosting static frontends (e.g., GitHub Pages), connect to your hosted Node.js server (Render / Railway) or local PC address.
+        </p>
+        <div class="form-group">
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-main); display: block; margin-bottom: 0.4rem;">Socket Server URL</label>
+          <input type="text" id="serverUrlInput" placeholder="e.g. https://airpulse-backend.onrender.com or http://192.168.1.15:3000" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem; color: #fff; font-size: 0.88rem; outline: none;" />
+        </div>
+      </div>
+      <div class="modal-footer" style="margin-top: 1.25rem; display: flex; justify-content: flex-end; gap: 0.5rem;">
+        <button class="btn btn-sm btn-outline" id="resetServerBtn">Reset to Default</button>
+        <button class="btn btn-sm btn-primary" id="saveServerBtn">Save & Connect</button>
+      </div>
+    </div>
   </div>
 
   <!-- Toast Notification Container -->

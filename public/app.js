@@ -73,95 +73,196 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const deviceData = getDeviceInfo();
 
-  // Initialize Socket.io Connection
-  socket = io();
-
-  // Parse URL Parameters
+  // Determine Socket Server URL
+  const storedServerUrl = localStorage.getItem('airpulse_server_url');
   const urlParams = new URLSearchParams(window.location.search);
-  const codeParam = urlParams.get('code');
+  const customServerParam = urlParams.get('server');
+  
+  let targetServerUrl = customServerParam || storedServerUrl || '';
+  
+  // If hosted on GitHub Pages and no custom server is specified, notify user
+  const isGitHubPages = window.location.hostname.endsWith('github.io');
 
-  if (codeParam) {
-    // Auto-join mode for mobile QR code scans
-    switchTab('join');
-    pinInput.value = codeParam;
-    joinRoom(codeParam);
-  } else {
-    // Default Host mode
-    socket.emit('create-room', deviceData);
+  function initSocketConnection(serverUrl) {
+    if (socket) socket.disconnect();
+    
+    try {
+      socket = serverUrl ? io(serverUrl) : io();
+    } catch (e) {
+      showToast('Failed to initialize socket connection', 'error');
+      return;
+    }
+
+    const codeParam = urlParams.get('code');
+
+    socket.on('connect', () => {
+      updateStatus('waiting', 'Connecting session...');
+      if (codeParam) {
+        switchTab('join');
+        pinInput.value = codeParam;
+        joinRoom(codeParam);
+      } else {
+        socket.emit('create-room', deviceData);
+      }
+    });
+
+    socket.on('connect_error', (err) => {
+      updateStatus('offline', 'Disconnected (No Server)');
+      if (isGitHubPages && !storedServerUrl && !customServerParam) {
+        showToast('GitHub Pages static host detected. Configure your backend server URL in settings.', 'error');
+        setTimeout(() => openServerModal(), 1500);
+      } else {
+        showToast('Cannot connect to backend server', 'error');
+      }
+    });
+
+    attachSocketListeners();
   }
 
-  // Socket Events
-  socket.on('connect', () => {
-    updateStatus('waiting', 'Connecting session...');
-  });
+  function attachSocketListeners() {
+    socket.on('room-created', ({ code, shareUrl, devices }) => {
+      currentRoom = code;
+      pinDisplay.textContent = code.replace(/(\d{3})(\d{3})/, '$1-$2');
+      
+      // If client is on GitHub Pages, overwrite share URL domain so mobile opens GitHub Pages app
+      let finalShareUrl = shareUrl;
+      if (isGitHubPages) {
+        finalShareUrl = `${window.location.origin}${window.location.pathname}?code=${code}`;
+        if (targetServerUrl) finalShareUrl += `&server=${encodeURIComponent(targetServerUrl)}`;
+      }
 
-  socket.on('room-created', ({ code, shareUrl, devices }) => {
-    currentRoom = code;
-    pinDisplay.textContent = code.replace(/(\d{3})(\d{3})/, '$1-$2');
-    shareUrlInput.value = shareUrl;
-    updateStatus('waiting', 'Waiting for mobile device...');
-    loadQRCode(shareUrl);
-    updateDevicesList(devices);
-  });
+      shareUrlInput.value = finalShareUrl;
+      updateStatus('waiting', 'Waiting for mobile device...');
+      loadQRCode(finalShareUrl);
+      updateDevicesList(devices);
+    });
 
-  socket.on('room-joined', ({ code, devices }) => {
-    currentRoom = code;
-    pinDisplay.textContent = code.replace(/(\d{3})(\d{3})/, '$1-$2');
-    updateStatus('online', 'Connected to Session');
-    updateDevicesList(devices);
-    showToast('Successfully connected to session!', 'success');
-  });
+    socket.on('room-joined', ({ code, devices }) => {
+      currentRoom = code;
+      pinDisplay.textContent = code.replace(/(\d{3})(\d{3})/, '$1-$2');
+      updateStatus('online', 'Connected to Session');
+      updateDevicesList(devices);
+      showToast('Successfully connected to session!', 'success');
+    });
 
-  socket.on('join-error', ({ message }) => {
-    showToast(message, 'error');
-    updateStatus('offline', 'Disconnected');
-  });
+    socket.on('join-error', ({ message }) => {
+      showToast(message, 'error');
+      updateStatus('offline', 'Disconnected');
+    });
 
-  socket.on('device-connected', ({ device, devices }) => {
-    updateDevicesList(devices);
-    updateStatus('online', `Connected with ${device.name}`);
-    playChimeSound('connect');
-    showToast(`${device.name} joined the room!`, 'info');
-    setupWebRTC(true); // Host initiates WebRTC
-  });
+    socket.on('device-connected', ({ device, devices }) => {
+      updateDevicesList(devices);
+      updateStatus('online', `Connected with ${device.name}`);
+      playChimeSound('connect');
+      showToast(`${device.name} joined the room!`, 'info');
+      setupWebRTC(true);
+    });
 
-  socket.on('device-disconnected', ({ devices }) => {
-    updateDevicesList(devices);
-    if (devices.length <= 1) {
-      updateStatus('waiting', 'Waiting for device...');
+    socket.on('device-disconnected', ({ devices }) => {
+      updateDevicesList(devices);
+      if (devices.length <= 1) {
+        updateStatus('waiting', 'Waiting for device...');
+      }
+      showToast('A device left the room', 'info');
+    });
+
+    socket.on('file-meta', (meta) => {
+      activeIncomingFile = {
+        id: meta.id,
+        name: meta.name,
+        size: meta.size,
+        type: meta.type,
+        receivedSize: 0,
+        chunks: [],
+        startTime: Date.now()
+      };
+      showProgressCard(meta.name, meta.size);
+    });
+
+    socket.on('file-chunk', (chunkData) => {
+      if (!activeIncomingFile || activeIncomingFile.id !== chunkData.id) return;
+      const buffer = new Uint8Array(chunkData.chunk).buffer;
+      activeIncomingFile.chunks.push(buffer);
+      activeIncomingFile.receivedSize += buffer.byteLength;
+      updateProgress(activeIncomingFile.receivedSize, activeIncomingFile.size, activeIncomingFile.startTime);
+
+      if (activeIncomingFile.receivedSize >= activeIncomingFile.size) {
+        finalizeReceivedFile(activeIncomingFile);
+        activeIncomingFile = null;
+      }
+    });
+
+    socket.on('receive-text', ({ text, senderName, timestamp }) => {
+      addTextSnippet(text, senderName, timestamp);
+      playChimeSound('receive');
+      showToast(`New text received from ${senderName}`, 'info');
+    });
+
+    socket.on('webrtc-signal', ({ signal }) => {
+      if (!peerConnection) setupWebRTC(false);
+
+      if (signal.sdp) {
+        peerConnection.setRemoteDescription(new RTCSessionDescription(signal.sdp))
+          .then(() => {
+            if (signal.sdp.type === 'offer') {
+              peerConnection.createAnswer()
+                .then(answer => peerConnection.setLocalDescription(answer))
+                .then(() => {
+                  socket.emit('webrtc-signal', { signal: { sdp: peerConnection.localDescription } });
+                });
+            }
+          });
+      } else if (signal.candidate) {
+        peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
+      }
+    });
+  }
+
+  // Server Modal Elements & Listeners
+  const serverSettingsBtn = document.getElementById('serverSettingsBtn');
+  const serverModal = document.getElementById('serverModal');
+  const closeServerModalBtn = document.getElementById('closeServerModalBtn');
+  const saveServerBtn = document.getElementById('saveServerBtn');
+  const resetServerBtn = document.getElementById('resetServerBtn');
+  const serverUrlInput = document.getElementById('serverUrlInput');
+
+  function openServerModal() {
+    serverUrlInput.value = localStorage.getItem('airpulse_server_url') || targetServerUrl || '';
+    serverModal.classList.remove('hidden');
+  }
+
+  function closeServerModal() {
+    serverModal.classList.add('hidden');
+  }
+
+  if (serverSettingsBtn) serverSettingsBtn.addEventListener('click', openServerModal);
+  if (closeServerModalBtn) closeServerModalBtn.addEventListener('click', closeServerModal);
+
+  saveServerBtn.addEventListener('click', () => {
+    const url = serverUrlInput.value.trim();
+    if (url) {
+      localStorage.setItem('airpulse_server_url', url);
+      targetServerUrl = url;
+      showToast('Saved custom backend server URL!', 'success');
+    } else {
+      localStorage.removeItem('airpulse_server_url');
+      targetServerUrl = '';
     }
-    showToast('A device left the room', 'info');
+    closeServerModal();
+    initSocketConnection(targetServerUrl);
   });
 
-  // Chunked Socket File Transfers (Fallback & Signal)
-  socket.on('file-meta', (meta) => {
-    activeIncomingFile = {
-      id: meta.id,
-      name: meta.name,
-      size: meta.size,
-      type: meta.type,
-      receivedSize: 0,
-      chunks: [],
-      startTime: Date.now()
-    };
-    showProgressCard(meta.name, meta.size);
+  resetServerBtn.addEventListener('click', () => {
+    localStorage.removeItem('airpulse_server_url');
+    serverUrlInput.value = '';
+    targetServerUrl = '';
+    showToast('Reset server URL to default', 'info');
+    closeServerModal();
+    initSocketConnection('');
   });
 
-  socket.on('file-chunk', (chunkData) => {
-    if (!activeIncomingFile || activeIncomingFile.id !== chunkData.id) return;
-
-    // Convert array back to ArrayBuffer
-    const buffer = new Uint8Array(chunkData.chunk).buffer;
-    activeIncomingFile.chunks.push(buffer);
-    activeIncomingFile.receivedSize += buffer.byteLength;
-
-    updateProgress(activeIncomingFile.receivedSize, activeIncomingFile.size, activeIncomingFile.startTime);
-
-    if (activeIncomingFile.receivedSize >= activeIncomingFile.size) {
-      finalizeReceivedFile(activeIncomingFile);
-      activeIncomingFile = null;
-    }
-  });
+  // Start initial connection
+  initSocketConnection(targetServerUrl);
 
   // Receive Shared Text
   socket.on('receive-text', ({ text, senderName, timestamp }) => {
