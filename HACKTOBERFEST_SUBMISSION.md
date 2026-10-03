@@ -18,23 +18,23 @@ My friend (and honestly, almost everyone I know) constantly runs into the annoyi
 
 ## Demo
 
-![AirPulse Demo](https://raw.githubusercontent.com/placeholder/airpulse-demo.png)
+### 🔗 Live Demo Links
+- **Live Hosted App**: [https://airpulse-backend-pcl3.onrender.com/](https://airpulse-backend-pcl3.onrender.com/)
+- **GitHub Repository**: [https://github.com/Shashanx05/AirPulse](https://github.com/Shashanx05/AirPulse)
 
 ### Key Features
 - 📱 **QR Code & 6-Digit PIN Pairing**: Scan with your phone camera or enter a quick PIN (e.g. `769-619`) to pair devices in under 2 seconds.
 - ⚡ **Bidirectional Transfer**: Send files from **Phone ⇄ Desktop** seamlessly.
 - 🚀 **High-Speed Direct Streaming**: Direct WebRTC DataChannels with chunked WebSocket fallback — files stream straight device-to-device.
-- 🎨 **Glassmorphism Dark UI**: Built with responsive neon gradients, subtle glowing animations, progress bars with transfer speed (MB/s) and ETA timers.
+- 🎨 **Mobile-Responsive Glassmorphism Dark UI**: Built with responsive neon gradients, subtle glowing animations, auto-scaling cards, progress bars with transfer speed (MB/s) and ETA timers.
 - 📋 **Clipboard & Text Sharing**: Send quick links, Wi-Fi passwords, or text notes between phone and PC with one click.
 - 🔊 **Web Audio Sound Effects**: Subtle audio chimes confirm when a device connects or when a file transfer finishes.
 
-- 🔊 **Web Audio Sound Effects**: Subtle audio chimes confirm when a device connects or when a file transfer finishes.
-
-### Live Demo & Setup
-- **Live Hosted Backend**: [https://airpulse-backend-pcl3.onrender.com/](https://airpulse-backend-pcl3.onrender.com/)
-
+### Live Local Setup
 ```bash
 # Clone the repository & install dependencies
+git clone https://github.com/Shashanx05/AirPulse.git
+cd AirPulse
 npm install
 
 # Start the local AirPulse server
@@ -59,7 +59,7 @@ The application is structured into a lightweight, high-performance Node.js backe
 ├── package.json         # Dependencies (Express, Socket.io, QRCode, IP)
 └── public/
     ├── index.html       # Single Page App layout with pairing hub, dropzone, & received vault
-    ├── style.css        # Premium dark glassmorphism styling & keyframe glow animations
+    ├── style.css        # Premium dark glassmorphism styling & mobile responsive media queries
     └── app.js           # Socket.io client, WebRTC DataChannel engine, file chunker, & audio synthesizer
 ```
 
@@ -115,7 +115,7 @@ Open innovation and open standards (such as **WebRTC**, **WebSockets**, and **Op
 
 ## My Agent Session
 
-This project was created in pair programming collaboration with **Antigravity AI Assistant**. The agent helped iterate on real-time WebRTC data channel chunking, responsive glassmorphism CSS, and local IP detection.
+This project was created in pair programming collaboration with **Antigravity AI Assistant**. The agent helped iterate on real-time WebRTC data channel chunking, responsive glassmorphism CSS, and local IP / cloud server URL detection.
 
 ---
 
